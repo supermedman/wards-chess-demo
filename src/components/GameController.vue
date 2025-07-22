@@ -8,7 +8,7 @@ import ChessPiece from './ChessPiece.vue';
 <template>
 
 <ChessBoard />
-<ChessPiece />
+<ChessPiece colour="White" />
 
 </template>
 

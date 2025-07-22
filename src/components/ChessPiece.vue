@@ -1,8 +1,3 @@
-<script setup lang="ts">
-
-</script>
-
-
 /**
  * Replicatable Piece Instance
  * 
@@ -14,8 +9,18 @@
  * 
  *  - Scripts for base movement rules
  */
-<template>
+<script setup lang="ts">
+interface PieceInfo {
+    colour?: "White" | "Black";
+    type?: "P" | "B" | "N" | "R" | "K" | "Q";
+}
 
+const { colour = "Black", type = "P" } = defineProps<PieceInfo>();
+</script>
+
+<template>
+    <h1>Piece Details</h1>
+    <p>Colour: {{colour}} || Type: {{type}}</p>
 </template>
 
 <style scoped>
