@@ -1,49 +1,49 @@
 <script setup lang="ts">
-import { useTemplateRef } from 'vue';
+// import { useTemplateRef } from 'vue';
 
-const canvasBoard = useTemplateRef<HTMLCanvasElement>("game-board");
+// const canvasBoard = useTemplateRef<HTMLCanvasElement>("game-board");
 
-const initCanvas = () => {
-    const ctxRsp = canvasBoard.value?.getContext('2d');
-    if (!ctxRsp || !canvasBoard.value) throw new Error("[WARNING]: Failed to locate canvas ctx!");
-    return { 
-        /** Canvas Context */
-        ctx: ctxRsp, 
-        /** Canvas Element */
-        c: canvasBoard.value 
-    };
-};
-const loadGameBoard = () => {
-    const { ctx, c } = initCanvas();
-    // 8 x 8
-    const DIM = 8;
-    // Height & Width per individual grid cell
-    const h = c.height / DIM, w = c.width / DIM;
-    // Quarter Dimensions for text placement
-    const qh = h / 4, qw = w / 4;
-    /**
-     * i @ 7 = Row 1
-     * j @ 7 = File H
-     * 
-     * x = 7, y = 7 === H1
-     */
-    for (let i = 0; i < DIM; i++) for (let j = 0; j < DIM; j++) {
-        // Alternating colours
-        ctx.fillStyle = ((j + i) % 2 === 0) ? "White" : "Black";
-        // console.log(`Current Style @ ${i}${String.fromCharCode(65 + j)}: ${ctx.fillStyle}`);
-        ctx.fillRect(j * w, i * h, w, h);
-        const pieceDetails = drawPiece(j, i);
-        if (!pieceDetails && j !== 0 && i !== 7) continue;
-        ctx.fillStyle = (ctx.fillStyle === "#ffffff") ? "Black": "White";
-        ctx.font = "bold 15px serif";
-        if (j === 0) ctx.fillText(`${Math.abs(i - 8)}`, qw * 0.5 + (j * w), qh * 0.9 + (i * h), qw);
-        if (i === 7) ctx.fillText(`${String.fromCharCode(65 + j)}`, qw * 2.5 + (j * w), qh * 3.5 + (i * h), qw);
-        if (!pieceDetails) continue;
-        ctx.font = "bold 20px serif";
-        const pTxt = `${pieceDetails.c.split("")[0]}:${pieceDetails.t}`;
-        ctx.fillText(pTxt, qw * 2 + (j * w), qh * 2 + (i * h), qw);
-    }
-};
+// const initCanvas = () => {
+//     const ctxRsp = canvasBoard.value?.getContext('2d');
+//     if (!ctxRsp || !canvasBoard.value) throw new Error("[WARNING]: Failed to locate canvas ctx!");
+//     return { 
+//         /** Canvas Context */
+//         ctx: ctxRsp, 
+//         /** Canvas Element */
+//         c: canvasBoard.value 
+//     };
+// };
+// const loadGameBoard = () => {
+//     const { ctx, c } = initCanvas();
+//     // 8 x 8
+//     const DIM = 8;
+//     // Height & Width per individual grid cell
+//     const h = c.height / DIM, w = c.width / DIM;
+//     // Quarter Dimensions for text placement
+//     const qh = h / 4, qw = w / 4;
+//     /**
+//      * i @ 7 = Row 1
+//      * j @ 7 = File H
+//      * 
+//      * x = 7, y = 7 === H1
+//      */
+//     for (let i = 0; i < DIM; i++) for (let j = 0; j < DIM; j++) {
+//         // Alternating colours
+//         ctx.fillStyle = ((j + i) % 2 === 0) ? "White" : "Black";
+//         // console.log(`Current Style @ ${i}${String.fromCharCode(65 + j)}: ${ctx.fillStyle}`);
+//         ctx.fillRect(j * w, i * h, w, h);
+//         const pieceDetails = drawPiece(j, i);
+//         if (!pieceDetails && j !== 0 && i !== 7) continue;
+//         ctx.fillStyle = (ctx.fillStyle === "#ffffff") ? "Black": "White";
+//         ctx.font = "bold 15px serif";
+//         if (j === 0) ctx.fillText(`${Math.abs(i - 8)}`, qw * 0.5 + (j * w), qh * 0.9 + (i * h), qw);
+//         if (i === 7) ctx.fillText(`${String.fromCharCode(65 + j)}`, qw * 2.5 + (j * w), qh * 3.5 + (i * h), qw);
+//         if (!pieceDetails) continue;
+//         ctx.font = "bold 20px serif";
+//         const pTxt = `${pieceDetails.c.split("")[0]}:${pieceDetails.t}`;
+//         ctx.fillText(pTxt, qw * 2 + (j * w), qh * 2 + (i * h), qw);
+//     }
+// };
 /**
  * Starting Position Mapping
  * 
@@ -169,33 +169,33 @@ const startingPosition = {
         ],
     }
 };
-const isStartingPosition = (coords: [x: number, y: number]) => coords[1] > 3 || coords[1] < 5;
-const drawPiece = (x: number, y: number) => {
-    if (!isStartingPosition([x, y] as [x: number, y: number])) return;
-    const checkPieceType = (file: number, c: "White" | "Black") => {
-        switch (file) {
-            case 0: case 7: return { c, t: "R" };
-            case 1: case 6: return { c, t: "N" };
-            case 2: case 5: return { c, t: "B" };
-            case 3: return { c, t: "Q" };
-            case 4: return { c, t: "K" };
-        }
-    };
-    switch (y) {
-        case 0: return checkPieceType(x, "Black");
-        // Black Pawn
-        case 1: return { c: "Black", t: "P" };
-        // White Pawn
-        case 6: return { c: "White", t: "P" };
-        case 7: return checkPieceType(x, "White");
-        default: return;
-    }
-}
+// const isStartingPosition = (coords: [x: number, y: number]) => coords[1] > 3 || coords[1] < 5;
+// const drawPiece = (x: number, y: number) => {
+//     if (!isStartingPosition([x, y] as [x: number, y: number])) return;
+//     const checkPieceType = (file: number, c: "White" | "Black") => {
+//         switch (file) {
+//             case 0: case 7: return { c, t: "R" };
+//             case 1: case 6: return { c, t: "N" };
+//             case 2: case 5: return { c, t: "B" };
+//             case 3: return { c, t: "Q" };
+//             case 4: return { c, t: "K" };
+//         }
+//     };
+//     switch (y) {
+//         case 0: return checkPieceType(x, "Black");
+//         // Black Pawn
+//         case 1: return { c: "Black", t: "P" };
+//         // White Pawn
+//         case 6: return { c: "White", t: "P" };
+//         case 7: return checkPieceType(x, "White");
+//         default: return;
+//     }
+// }
 </script>
 
 <!-- Background Canvas Display -->
 <template>
-    <button @click="loadGameBoard">Load Board!</button>
+    <!-- <button @click="loadGameBoard">Load Board!</button> -->
     <div>
         <canvas height="500" width="500" ref="game-board"></canvas>
         <!-- <template v-for="([c, t, coords]) in pieceInitData">
@@ -212,5 +212,6 @@ const drawPiece = (x: number, y: number) => {
 <style scoped>
 canvas {
     border: 1px solid red;
+    position: relative;
 }
 </style>

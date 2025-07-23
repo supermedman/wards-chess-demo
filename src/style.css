@@ -11,6 +11,19 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  --divBy: 0.8rem;
+  --boardHToWRatio: 1;
+
+  
+  --boardMinWidth: 26.4rem;
+  --boardMaxWidth: 85vw;
+  --boardMaxHeight: 85vh;
+  
+  --boardContWidth: max(var(--boardMinWidth), min(var(--boardMaxWidth), var(--boardMaxHeight)));
+  
+  --boardWidth: round(down, var(--boardContWidth), var(--divBy));
+  --boardHeight: calc(var(--boardWidth) * var(--boardHToWRatio));
 }
 
 a {

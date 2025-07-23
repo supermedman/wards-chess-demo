@@ -19,8 +19,6 @@ type PieceInfo = {
     type: "P" | "B" | "N" | "R" | "K" | "Q";
     x: number;
     y: number;
-    // style: string;
-    // coords: [x: number, y: number];
 };
 /** @vue-ignore */
 type AddInit<Type extends { [k: string]: any }> = { [Key in keyof Type as `init${Capitalize<Key & string>}`]: Type[Key] };
@@ -43,6 +41,9 @@ const colour = ref<PieceInfo["colour"]>("Black"),
     x = ref<PieceInfo["x"]>(0),
     y = ref<PieceInfo["y"]>(0);
 
+// @ts-ignore
+const hasMoved = ref<boolean>(false);
+
 // const coords = [x, y] as const;
 // @ts-ignore
 const notatePosition = () => `${String.fromCharCode(65 + Math.abs(x.value - 7))}${y.value + 1}`;
@@ -50,10 +51,102 @@ const notatePosition = () => `${String.fromCharCode(65 + Math.abs(x.value - 7))}
 const buildStyleClass = () => `piece ${colour.value.substring(0, 1).toLowerCase()}${type.value.toLowerCase()} sqr-${x.value + 1}${y.value + 1}`;
 // @ts-ignore
 const typeIndex = ["P", "B", "N", "R", "K", "Q"] as const;
+
+const yInvert = (team: PieceInfo["colour"], mag: number/**, isFlipped: boolean = false */) => {
+    if (team === "Black") return mag * -1;
+    else return mag * +1;
+
+    // switch (isFlipped) {
+    //     // POV Black
+    //     case true:
+    //         if (team === "Black") return +1
+    //         else return
+    //     break;
+    //     // POV White
+    //     case false:
+
+    //     break;
+    // }
+};
+
+const ruleSet = {
+    "P": {
+        "move": [
+            { x: x.value, y: y.value + yInvert(colour.value, 1) }
+        ],
+        "attack": [
+            { x: x.value + 1, y: y.value + yInvert(colour.value, 1) },
+            { x: x.value - 1, y: y.value + yInvert(colour.value, 1) }
+        ],
+        "special": [],
+    },
+    "N": {
+        /**      8   1
+         *       < ^ >
+         *         ^
+         * 7 ^     ^     ^ 2
+         *   < < < N > > >
+         * 6 v     v     v 3
+         *         v
+         *       < v > 
+         *       5   4
+         */
+        "move": [
+            // 1
+            { x: x.value + 1, y: y.value + 3 },
+            // 2
+            { x: x.value + 3, y: y.value + 1 },
+            // 3
+            { x: x.value + 3, y: y.value - 1 },
+            // 4
+            { x: x.value + 1, y: y.value - 3 },
+            // 5
+            { x: x.value - 1, y: y.value - 3 },
+            // 6
+            { x: x.value - 3, y: y.value - 1 },
+            // 7
+            { x: x.value - 3, y: y.value + 1 },
+            // 8
+            { x: x.value - 1, y: y.value + 3 },
+        ],
+        "attack": [],
+        "special": [],
+    },
+    "B": {
+        "move": [],
+        "attack": [],
+        "special": []
+    },
+    "R": {
+        "move": [],
+        "attack": [],
+        "special": []
+    },
+    "K": {
+        "move": [],
+        "attack": [],
+        "special": []
+    },
+    "Q": {
+        "move": [],
+        "attack": [],
+        "special": []
+    }
+};
+
+const displayRules = (team: PieceInfo['colour'], pieceType: PieceInfo['type']) => {
+    console.log("Team Selected: ", team);
+    console.log("Moveset for selected piece: ", ...ruleSet[pieceType]['move']);
+};
 </script>
 
 <template>
-    <div>
+    <div @click="displayRules($props.initColour ?? 'Black', $props.initType ?? 'P')">
+        <!-- 
+            Emit Event??
+            Build moveset map overlay?
+            TBD WIP
+        -->
         <!-- <div v-if="!$props.initX && !$props.initY"> -->
             <!-- {{ initColour }} {{ initType }} [{{ initX }}, {{ initY }}] -->
             <!-- <div :class="initStyle"></div> -->
@@ -74,12 +167,21 @@ const typeIndex = ["P", "B", "N", "R", "K", "Q"] as const;
 <style scoped>
 .piece {
     background-size: 100%;
+    overflow: hidden;
     height: 12.5%;
     width: 12.5%;
     left: 0;
     top: 0;
     position: absolute;
     will-change: transform;
+}
+
+.piece:hover {
+    cursor: -webkit-grab;
+}
+
+.piece:active {
+    cursor: pointer;
 }
 
 .piece.wp { background-image: url("../assets/wp.png"); }
