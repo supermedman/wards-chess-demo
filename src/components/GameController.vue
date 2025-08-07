@@ -98,6 +98,7 @@ const buildInitData = (inverted: boolean = false) => {
 import { ref, useTemplateRef, watch } from 'vue';
 
 const canvasBoard = useTemplateRef<HTMLCanvasElement>("game-board");
+const mainContainer = useTemplateRef<HTMLDivElement>("main-container");
 
 const initCanvas = () => {
     const cRsp = canvasBoard.value;
@@ -154,6 +155,65 @@ const loadGameBoard = (inverted: boolean = false) => {
 
 const isInverted = ref<boolean>(false);
 
+
+const findAnchorComments = (childrenList: ArrayIterator<[number, ChildNode]>, kids = [...childrenList]) => {
+    return kids.filter(([_, child]) => child instanceof Comment && child.data.startsWith("/")) as [number, Comment][];
+};
+const findIndexOfAnchor = (childList: [number, Comment][], anchorName: string) => {
+    let finalIndex = mainContainer.value!.children.length;
+    switch(anchorName) {
+        case "Hint":
+            const hintAnchorLocated = childList.find(([_, c]) => c.data === "/MoveHints");
+            console.log("Located Anchor For Hints: ", hintAnchorLocated);
+            finalIndex = hintAnchorLocated ? hintAnchorLocated[0] : finalIndex;
+        break;
+        default: break;
+    }
+    return finalIndex;
+};
+const insertAtAnchor = (insertList: HTMLDivElement[], insertIdx: number) => {
+    if (!mainContainer.value) throw new Error("[WARNING]: Main Game Container Missing!!");
+    const insertAnchor = mainContainer.value.children[insertIdx];
+
+    for (const ele of insertList) 
+        if (insertAnchor) mainContainer.value.insertBefore(ele, insertAnchor);
+        else mainContainer.value.appendChild(ele);
+};
+
+const buildHintDivs = (hints: { x: number; y: number; }[]) => {
+    const hintEleList: HTMLDivElement[] = [];
+    for (const hint of hints) {
+        const sqrOccupied = document.querySelector(`div.piece.sqr-${hint.x}${hint.y}`);
+        if (sqrOccupied) continue;
+        // Call for movement check between game board and piece clicked, voiding further movement logic when first filitering valid movesets
+        const hintEle = document.createElement('div');
+        hintEle.className = `hint ${(isInverted.value) ? "inv ": ""}sqr-${hint.x}${hint.y}`;
+        hintEleList.push(hintEle);
+    }
+    return hintEleList;
+};
+const removeHintDivs = () => {
+    const hintDivs = Array.from(document.getElementsByClassName("hint") as HTMLCollectionOf<HTMLDivElement>);
+    for (const hint of hintDivs) hint.remove();
+};
+
+function updateHints(...args: { x: number; y: number; }[]) {
+    if (!mainContainer.value) throw new Error("[WARNING]: Main Game Container Missing!!");
+    removeHintDivs();
+    console.log("Hint Update Event Recieved: ", args);
+    const builtHints = buildHintDivs(args);
+    // console.log("Constructed Hints: ", builtHints);
+    // console.log("Main Container State: ", mainContainer.value);
+
+    const cmntList = findAnchorComments(mainContainer.value.childNodes.entries());
+    // console.log("Comment List: ", cmntList);
+
+    const anchorIdx = findIndexOfAnchor(cmntList, "Hint");
+    // console.log("Piece Movement Hint Anchor Position: ", anchorIdx);
+    insertAtAnchor(builtHints, anchorIdx);
+}
+
+
 watch(isInverted, (newInv, oldInv) => {
     if (newInv === oldInv) return;
     loadGameBoard(newInv);
@@ -186,8 +246,8 @@ watch(isInverted, (newInv, oldInv) => {
 <template>
     <button @click="loadGameBoard(isInverted)">Load Board!</button>
     <button @click="isInverted = !isInverted">Switch Team! Current Team: {{ !isInverted ? "White" : "Black" }}</button>
-    <div class="game-cont">
-        <canvas ref="game-board"></canvas> <!-- height="500" width="500" -->
+    <div class="game-cont" ref="main-container">
+        <canvas ref="game-board"></canvas>
         <chess-piece v-for="[c, t, coords, style] in buildInitData(isInverted)"
             :init-colour="c"
             :init-type="t"
@@ -195,75 +255,10 @@ watch(isInverted, (newInv, oldInv) => {
             :init-y=coords[1]
             :init-inverted=isInverted
             :class=style
+            @show-hints="updateHints"
         ></chess-piece>
+        <!--/MoveHints-->
     </div>
-<!-- <chess-piece init-colour="Black" init-type="B"></chess-piece> -->
-<!-- <chess-piece init-colour="White" init-type="P" :init-x=0 :init-y=6 class="piece wp sqr-06"></chess-piece>
-    <chess-piece init-colour="White" init-type="P" :init-x=1 :init-y=6 class="piece wp sqr-16"></chess-piece>
-    <chess-piece init-colour="White" init-type="P" :init-x=2 :init-y=6 class="piece wp sqr-26"></chess-piece>
-    <chess-piece init-colour="White" init-type="P" :init-x=3 :init-y=6 class="piece wp sqr-36"></chess-piece>
-    <chess-piece init-colour="White" init-type="P" :init-x=4 :init-y=6 class="piece wp sqr-46"></chess-piece>
-    <chess-piece init-colour="White" init-type="P" :init-x=5 :init-y=6 class="piece wp sqr-56"></chess-piece>
-    <chess-piece init-colour="White" init-type="P" :init-x=6 :init-y=6 class="piece wp sqr-66"></chess-piece>
-    <chess-piece init-colour="White" init-type="P" :init-x=7 :init-y=6 class="piece wp sqr-76"></chess-piece>
-    <chess-piece init-colour="White" init-type="N" :init-x=1 :init-y=7 class="piece wn sqr-17"></chess-piece>
-    <chess-piece init-colour="White" init-type="N" :init-x=6 :init-y=7 class="piece wn sqr-67"></chess-piece>
-    <chess-piece init-colour="White" init-type="B" :init-x=2 :init-y=7 class="piece wb sqr-27"></chess-piece>
-    <chess-piece init-colour="White" init-type="B" :init-x=5 :init-y=7 class="piece wb sqr-57"></chess-piece>
-    <chess-piece init-colour="White" init-type="R" :init-x=0 :init-y=7 class="piece wr sqr-07"></chess-piece>
-    <chess-piece init-colour="White" init-type="R" :init-x=7 :init-y=7 class="piece wr sqr-77"></chess-piece>
-    <chess-piece init-colour="White" init-type="K" :init-x=4 :init-y=7 class="piece wk sqr-47"></chess-piece>
-    <chess-piece init-colour="White" init-type="Q" :init-x=3 :init-y=7 class="piece wq sqr-37"></chess-piece>
-
-    <chess-piece init-colour="Black" init-type="P" :init-x=0 :init-y=2 class="piece bp sqr-02"></chess-piece>
-    <chess-piece init-colour="Black" init-type="P" :init-x=1 :init-y=2 class="piece bp sqr-12"></chess-piece>
-    <chess-piece init-colour="Black" init-type="P" :init-x=2 :init-y=2 class="piece bp sqr-22"></chess-piece>
-    <chess-piece init-colour="Black" init-type="P" :init-x=3 :init-y=2 class="piece bp sqr-32"></chess-piece>
-    <chess-piece init-colour="Black" init-type="P" :init-x=4 :init-y=2 class="piece bp sqr-42"></chess-piece>
-    <chess-piece init-colour="Black" init-type="P" :init-x=5 :init-y=2 class="piece bp sqr-52"></chess-piece>
-    <chess-piece init-colour="Black" init-type="P" :init-x=6 :init-y=2 class="piece bp sqr-62"></chess-piece>
-    <chess-piece init-colour="Black" init-type="P" :init-x=7 :init-y=2 class="piece bp sqr-72"></chess-piece>
-    <chess-piece init-colour="Black" init-type="N" :init-x=1 :init-y=0 class="piece bn sqr-10"></chess-piece>
-    <chess-piece init-colour="Black" init-type="N" :init-x=6 :init-y=0 class="piece bn sqr-60"></chess-piece>
-    <chess-piece init-colour="Black" init-type="B" :init-x=2 :init-y=0 class="piece bb sqr-20"></chess-piece>
-    <chess-piece init-colour="Black" init-type="B" :init-x=5 :init-y=0 class="piece bb sqr-50"></chess-piece>
-    <chess-piece init-colour="Black" init-type="R" :init-x=0 :init-y=0 class="piece br sqr-00"></chess-piece>
-    <chess-piece init-colour="Black" init-type="R" :init-x=7 :init-y=0 class="piece br sqr-70"></chess-piece>
-    <chess-piece init-colour="Black" init-type="K" :init-x=4 :init-y=0 class="piece bk sqr-40"></chess-piece>
-    <chess-piece init-colour="Black" init-type="Q" :init-x=3 :init-y=0 class="piece bq sqr-30"></chess-piece> -->
-
-    <!-- <chess-piece class="piece wp sqr-06"></chess-piece>
-    <chess-piece class="piece wp sqr-16"></chess-piece>
-    <chess-piece class="piece wp sqr-26"></chess-piece>
-    <chess-piece class="piece wp sqr-36"></chess-piece>
-    <chess-piece class="piece wp sqr-46"></chess-piece>
-    <chess-piece class="piece wp sqr-56"></chess-piece>
-    <chess-piece class="piece wp sqr-66"></chess-piece>
-    <chess-piece class="piece wp sqr-76"></chess-piece>
-    <chess-piece class="piece wn sqr-17"></chess-piece>
-    <chess-piece class="piece wn sqr-67"></chess-piece>
-    <chess-piece class="piece wb sqr-27"></chess-piece>
-    <chess-piece class="piece wb sqr-57"></chess-piece>
-    <chess-piece class="piece wr sqr-07"></chess-piece>
-    <chess-piece class="piece wr sqr-77"></chess-piece>
-    <chess-piece class="piece wk sqr-47"></chess-piece>
-    <chess-piece class="piece wq sqr-37"></chess-piece>
-    <chess-piece class="piece bp sqr-02"></chess-piece>
-    <chess-piece class="piece bp sqr-12"></chess-piece>
-    <chess-piece class="piece bp sqr-22"></chess-piece>
-    <chess-piece class="piece bp sqr-32"></chess-piece>
-    <chess-piece class="piece bp sqr-42"></chess-piece>
-    <chess-piece class="piece bp sqr-52"></chess-piece>
-    <chess-piece class="piece bp sqr-62"></chess-piece>
-    <chess-piece class="piece bp sqr-72"></chess-piece>
-    <chess-piece class="piece bn sqr-10"></chess-piece>
-    <chess-piece class="piece bn sqr-60"></chess-piece>
-    <chess-piece class="piece bb sqr-20"></chess-piece>
-    <chess-piece class="piece bb sqr-50"></chess-piece>
-    <chess-piece class="piece br sqr-00"></chess-piece>
-    <chess-piece class="piece br sqr-70"></chess-piece>
-    <chess-piece class="piece bk sqr-40"></chess-piece>
-    <chess-piece class="piece bq sqr-30"></chess-piece> -->
 </template>
 
 <style scoped>
@@ -282,4 +277,198 @@ canvas {
     width: var(--boardWidth);
     height: var(--boardHeight);
 }
+</style>
+
+<style>
+.piece {
+    background-size: 100%;
+    overflow: hidden;
+    height: 12.5%;
+    width: 12.5%;
+    left: 0;
+    top: 0;
+    position: absolute;
+    will-change: transform;
+}
+
+.hint {
+    background-color: rgba(53, 48, 48, 0.14);
+    background-clip: content-box;
+    border-radius: 50%;
+    box-sizing: border-box;
+    padding: 4.2%;
+    height: 12.5%;
+    width: 12.5%;
+    left: 0;
+    top: 0;
+    position: absolute;
+    pointer-events: none;
+}
+
+.piece:hover {
+    cursor: -webkit-grab;
+}
+
+.piece:active {
+    cursor: pointer;
+}
+
+.piece.wp { background-image: url("../assets/wp.png"); }
+.piece.wb { background-image: url("../assets/wb.png"); }
+.piece.wn { background-image: url("../assets/wn.png"); }
+.piece.wr { background-image: url("../assets/wr.png"); }
+.piece.wk { background-image: url("../assets/wk.png"); }
+.piece.wq { background-image: url("../assets/wq.png"); }
+.piece.bp { background-image: url("../assets/bp.png"); }
+.piece.bb { background-image: url("../assets/bb.png"); }
+.piece.bn { background-image: url("../assets/bn.png"); }
+.piece.br { background-image: url("../assets/br.png"); }
+.piece.bk { background-image: url("../assets/bk.png"); }
+.piece.bq { background-image: url("../assets/bq.png"); }
+
+.sqr-11 { transform: translateY(700%); }
+.sqr-21 { transform: translate(100%, 700%); }
+.sqr-31 { transform: translate(200%, 700%); }
+.sqr-41 { transform: translate(300%, 700%); }
+.sqr-51 { transform: translate(400%, 700%); }
+.sqr-61 { transform: translate(500%, 700%); }
+.sqr-71 { transform: translate(600%, 700%); }
+.sqr-81 { transform: translate(700%, 700%); }
+
+.sqr-12 { transform: translateY(600%); }
+.sqr-22 { transform: translate(100%, 600%); }
+.sqr-32 { transform: translate(200%, 600%); }
+.sqr-42 { transform: translate(300%, 600%); }
+.sqr-52 { transform: translate(400%, 600%); }
+.sqr-62 { transform: translate(500%, 600%); }
+.sqr-72 { transform: translate(600%, 600%); }
+.sqr-82 { transform: translate(700%, 600%); }
+
+.sqr-13 { transform: translateY(500%); }
+.sqr-23 { transform: translate(100%, 500%); }
+.sqr-33 { transform: translate(200%, 500%); }
+.sqr-43 { transform: translate(300%, 500%); }
+.sqr-53 { transform: translate(400%, 500%); }
+.sqr-63 { transform: translate(500%, 500%); }
+.sqr-73 { transform: translate(600%, 500%); }
+.sqr-83 { transform: translate(700%, 500%); }
+
+.sqr-14 { transform: translateY(400%); }
+.sqr-24 { transform: translate(100%, 400%); }
+.sqr-34 { transform: translate(200%, 400%); }
+.sqr-44 { transform: translate(300%, 400%); }
+.sqr-54 { transform: translate(400%, 400%); }
+.sqr-64 { transform: translate(500%, 400%); }
+.sqr-74 { transform: translate(600%, 400%); }
+.sqr-84 { transform: translate(700%, 400%); }
+
+.sqr-15 { transform: translateY(300%); }
+.sqr-25 { transform: translate(100%, 300%); }
+.sqr-35 { transform: translate(200%, 300%); }
+.sqr-45 { transform: translate(300%, 300%); }
+.sqr-55 { transform: translate(400%, 300%); }
+.sqr-65 { transform: translate(500%, 300%); }
+.sqr-75 { transform: translate(600%, 300%); }
+.sqr-85 { transform: translate(700%, 300%); }
+
+.sqr-16 { transform: translateY(200%); }
+.sqr-26 { transform: translate(100%, 200%); }
+.sqr-36 { transform: translate(200%, 200%); }
+.sqr-46 { transform: translate(300%, 200%); }
+.sqr-56 { transform: translate(400%, 200%); }
+.sqr-66 { transform: translate(500%, 200%); }
+.sqr-76 { transform: translate(600%, 200%); }
+.sqr-86 { transform: translate(700%, 200%); }
+
+.sqr-17 { transform: translateY(100%); }
+.sqr-27 { transform: translate(100%, 100%); }
+.sqr-37 { transform: translate(200%, 100%); }
+.sqr-47 { transform: translate(300%, 100%); }
+.sqr-57 { transform: translate(400%, 100%); }
+.sqr-67 { transform: translate(500%, 100%); }
+.sqr-77 { transform: translate(600%, 100%); }
+.sqr-87 { transform: translate(700%, 100%); }
+
+.sqr-18 { transform: translate(); }
+.sqr-28 { transform: translate(100%); }
+.sqr-38 { transform: translate(200%); }
+.sqr-48 { transform: translate(300%); }
+.sqr-58 { transform: translate(400%); }
+.sqr-68 { transform: translate(500%); }
+.sqr-78 { transform: translate(600%); }
+.sqr-88 { transform: translate(700%); }
+
+/** INVERTED */
+.inv.sqr-11 { transform: translate(700%); }
+.inv.sqr-21 { transform: translate(600%); }
+.inv.sqr-31 { transform: translate(500%); }
+.inv.sqr-41 { transform: translate(400%); }
+.inv.sqr-51 { transform: translate(300%); }
+.inv.sqr-61 { transform: translate(200%); }
+.inv.sqr-71 { transform: translate(100%); }
+.inv.sqr-81 { transform: translateY(0%); }
+
+.inv.sqr-12 { transform: translate(700%, 100%); }
+.inv.sqr-22 { transform: translate(600%, 100%); }
+.inv.sqr-32 { transform: translate(500%, 100%); }
+.inv.sqr-42 { transform: translate(400%, 100%); }
+.inv.sqr-52 { transform: translate(300%, 100%); }
+.inv.sqr-62 { transform: translate(200%, 100%); }
+.inv.sqr-72 { transform: translate(100%, 100%); }
+.inv.sqr-82 { transform: translateY(100%); }
+
+.inv.sqr-13 { transform: translate(700%, 200%); }
+.inv.sqr-23 { transform: translate(600%, 200%); }
+.inv.sqr-33 { transform: translate(500%, 200%); }
+.inv.sqr-43 { transform: translate(400%, 200%); }
+.inv.sqr-53 { transform: translate(300%, 200%); }
+.inv.sqr-63 { transform: translate(200%, 200%); }
+.inv.sqr-73 { transform: translate(100%, 200%); }
+.inv.sqr-83 { transform: translateY(200%); }
+
+.inv.sqr-14 { transform: translate(700%, 300%); }
+.inv.sqr-24 { transform: translate(600%, 300%); }
+.inv.sqr-34 { transform: translate(500%, 300%); }
+.inv.sqr-44 { transform: translate(400%, 300%); }
+.inv.sqr-54 { transform: translate(300%, 300%); }
+.inv.sqr-64 { transform: translate(200%, 300%); }
+.inv.sqr-74 { transform: translate(100%, 300%); }
+.inv.sqr-84 { transform: translateY(300%); }
+
+.inv.sqr-15 { transform: translate(700%, 400%); }
+.inv.sqr-25 { transform: translate(600%, 400%); }
+.inv.sqr-35 { transform: translate(500%, 400%); }
+.inv.sqr-45 { transform: translate(400%, 400%); }
+.inv.sqr-55 { transform: translate(300%, 400%); }
+.inv.sqr-65 { transform: translate(200%, 400%); }
+.inv.sqr-75 { transform: translate(100%, 400%); }
+.inv.sqr-85 { transform: translateY(400%); }
+
+.inv.sqr-16 { transform: translate(700%, 500%); }
+.inv.sqr-26 { transform: translate(600%, 500%); }
+.inv.sqr-36 { transform: translate(500%, 500%); }
+.inv.sqr-46 { transform: translate(400%, 500%); }
+.inv.sqr-56 { transform: translate(300%, 500%); }
+.inv.sqr-66 { transform: translate(200%, 500%); }
+.inv.sqr-76 { transform: translate(100%, 500%); }
+.inv.sqr-86 { transform: translateY(500%); }
+
+.inv.sqr-17 { transform: translate(700%, 600%); }
+.inv.sqr-27 { transform: translate(600%, 600%); }
+.inv.sqr-37 { transform: translate(500%, 600%); }
+.inv.sqr-47 { transform: translate(400%, 600%); }
+.inv.sqr-57 { transform: translate(300%, 600%); }
+.inv.sqr-67 { transform: translate(200%, 600%); }
+.inv.sqr-77 { transform: translate(100%, 600%); }
+.inv.sqr-87 { transform: translateY(600%); }
+
+.inv.sqr-18 { transform: translate(700%, 700%); }
+.inv.sqr-28 { transform: translate(600%, 700%); }
+.inv.sqr-38 { transform: translate(500%, 700%); }
+.inv.sqr-48 { transform: translate(400%, 700%); }
+.inv.sqr-58 { transform: translate(300%, 700%); }
+.inv.sqr-68 { transform: translate(200%, 700%); }
+.inv.sqr-78 { transform: translate(100%, 700%); }
+.inv.sqr-88 { transform: translateY(700%); }
+
 </style>

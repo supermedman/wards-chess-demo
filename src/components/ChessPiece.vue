@@ -45,6 +45,10 @@ defineProps<InitPieceInfo>();
 // @ts-ignore
 const hasMoved = ref<boolean>(false);
 
+const emitter = defineEmits<{
+    showHints: { x: number, y: number }[]
+}>();
+
 
 // const coords = [x, y] as const;
 // @ts-ignore
@@ -86,17 +90,52 @@ const validMove = () => {
     // EMIT EVENT TO CONTROLLER FOR SHOWING MOVEMENT HINTS!!
     moveList.forEach((move) => console.log(`${details.c} ${details.t} @ ${buildNotation(details.x, details.y, details.inv)}: `, buildNotation(move.x, move.y, details.inv)));
     // console.log(moveList);
+    emitter("showHints", ...moveList);
 };
 
 const buildActionList = (details: ActivePieceDetails, actionType: "move" | "attack" | "special" = "move") => {
-    const baseActions = ruleSet[details.t][actionType] as { x: number, y: number, inverter?: typeof yInvert }[];
+    const baseActions = ruleSet[details.t][actionType] as { x: number, y: number, inverter?: typeof yInvert, expand?: boolean }[];
     if (!baseActions.length) return [{x: 1, y: 1}];
     const validActions: { x: number, y: number }[] = [];
     for (const action of baseActions) {
+        if (action.expand) {
+            for (let i = 1; i < 8; i++) {
+                // "Early Return" when piece would move through another piece in order to reach "valid" movement location
+                if (document.querySelector(`div.piece.sqr-${details.x + (action.x * i)}${details.y + (action.y * i)}`)) break;
+                validActions.push({
+                    x: details.x + (action.x * i),
+                    y: details.y + (action.y * i),
+                });
+            }
+            continue;
+        }
+
+        if (details.t !== "P") {
+            validActions.push({
+                x: details.x + action.x,
+                y: details.y + action.y
+            });
+            continue;
+        }
+
+        const isFirstPawnMove = (
+            (details.c === "Black" && !details.inv && details.y === 7) ||
+            (details.c === "White" && !details.inv && details.y === 2) ||
+            (details.c === "Black" && details.inv && details.y === 2) ||
+            (details.c === "White" && details.inv && details.y === 7)
+        );
+        console.log("Is First Pawn Move: ", isFirstPawnMove);
+
         const trueY = (action.inverter && typeof action.inverter === 'function') ? action.inverter(details.c, action.y, details.inv) : action.y;
         validActions.push({
             x: details.x + action.x,
             y: details.y + trueY
+        });
+        if (!isFirstPawnMove) continue;
+        const trueDoubleY = (action.inverter && typeof action.inverter === 'function') ? action.inverter(details.c, action.y + 1, details.inv) : action.y + 1;
+        validActions.push({
+            x: details.x + action.x,
+            y: details.y + trueDoubleY
         });
     }
     const isValidPosition = ({ x, y }: { x: number, y: number}) => x >= 1 && x <= 8 && y >= 1 && y <= 8;
@@ -160,30 +199,96 @@ const ruleSet = {
             // 8
             { x: 0 - 1, y: 0 + 2 },
         ],
-        "attack": [],
+        "attack": [
+            { x: 0 + 1, y: 0 + 2 },
+            { x: 0 + 2, y: 0 + 1 },
+            { x: 0 + 2, y: 0 - 1 },
+            { x: 0 + 1, y: 0 - 2 },
+            { x: 0 - 1, y: 0 - 2 },
+            { x: 0 - 2, y: 0 - 1 },
+            { x: 0 - 2, y: 0 + 1 },
+            { x: 0 - 1, y: 0 + 2 },
+        ],
         "special": [],
     },
     "B": {
-        "move": [],
-        "attack": [],
+        "move": [
+            { x: 1,  y: 1,  expand: true },
+            { x: -1, y: -1, expand: true },
+            { x: 1,  y: -1, expand: true },
+            { x: -1, y: 1,  expand: true },
+        ],
+        "attack": [
+            { x: 1,  y: 1,  expand: true },
+            { x: -1, y: -1, expand: true },
+            { x: 1,  y: -1, expand: true },
+            { x: -1, y: 1,  expand: true },
+        ],
         "special": []
     },
     "R": {
-        "move": [],
-        "attack": [],
+        "move": [
+            { x: 0,  y: 1,  expand: true },
+            { x: 0,  y: -1, expand: true },
+            { x: 1,  y: 0,  expand: true },
+            { x: -1, y: 0,  expand: true },
+        ],
+        "attack": [
+            { x: 0,  y: 1,  expand: true },
+            { x: 0,  y: -1, expand: true },
+            { x: 1,  y: 0,  expand: true },
+            { x: -1, y: 0,  expand: true },
+        ],
         "special": []
     },
     "K": {
-        "move": [],
-        "attack": [],
+        "move": [
+            { x: 1,  y: 1 },
+            { x: -1, y: -1 },
+            { x: 1,  y: -1 },
+            { x: -1, y: 1 },
+            { x: 0,  y: 1 },
+            { x: 0,  y: -1 },
+            { x: 1,  y: 0 },
+            { x: -1, y: 0 },
+        ],
+        "attack": [
+            { x: 1,  y: 1 },
+            { x: -1, y: -1 },
+            { x: 1,  y: -1 },
+            { x: -1, y: 1 },
+            { x: 0,  y: 1 },
+            { x: 0,  y: -1 },
+            { x: 1,  y: 0 },
+            { x: -1, y: 0 },
+        ],
         "special": []
     },
     "Q": {
-        "move": [],
-        "attack": [],
+        "move": [
+            { x: 1,  y: 1,  expand: true },
+            { x: -1, y: -1, expand: true },
+            { x: 1,  y: -1, expand: true },
+            { x: -1, y: 1,  expand: true },
+            { x: 0,  y: 1,  expand: true },
+            { x: 0,  y: -1, expand: true },
+            { x: 1,  y: 0,  expand: true },
+            { x: -1, y: 0,  expand: true },
+        ],
+        "attack": [
+            { x: 1,  y: 1,  expand: true },
+            { x: -1, y: -1, expand: true },
+            { x: 1,  y: -1, expand: true },
+            { x: -1, y: 1,  expand: true },
+            { x: 0,  y: 1,  expand: true },
+            { x: 0,  y: -1, expand: true },
+            { x: 1,  y: 0,  expand: true },
+            { x: -1, y: 0,  expand: true },
+        ],
         "special": []
     }
 };
+
 
 // @ts-ignore
 const displayRules = (team: PieceInfo['colour'], pieceType: PieceInfo['type']) => {
@@ -206,185 +311,9 @@ const displayRules = (team: PieceInfo['colour'], pieceType: PieceInfo['type']) =
 </script>
 
 <template>
-    <div 
-        @click="validMove()"
-        ref="piece-instance"
-    >
-        <!-- 
-            Emit Event??
-            Build moveset map overlay?
-            TBD WIP
-        -->
-        <!-- <div v-if="!$props.initX && !$props.initY"> -->
-            <!-- {{ initColour }} {{ initType }} [{{ initX }}, {{ initY }}] -->
-            <!-- <div :class="initStyle"></div> -->
-            <!-- <h1>Piece Details</h1>
-            <div>
-                <p>
-                    Colour: <button @click="colour = colour === 'White' ? 'Black' : 'White'">{{ colour ?? initColour }}</button> 
-                    || 
-                    Type: <button @click="type = typeIndex.indexOf(type) === 5 ? typeIndex[0] : typeIndex[typeIndex.indexOf(type) + 1]">{{ type ?? initType }}</button>
-                    ||
-                    Position: <button>{{ notatePosition() }}</button>
-                </p>
-            </div>
-        </div> -->
-    </div>
+    <div @click="validMove()" ref="piece-instance"></div>
 </template>
 
 <style scoped>
-.piece {
-    background-size: 100%;
-    overflow: hidden;
-    height: 12.5%;
-    width: 12.5%;
-    left: 0;
-    top: 0;
-    position: absolute;
-    will-change: transform;
-}
-
-.hint {
-    background-color: rgba(0, 0, 0, .14);
-    background-clip: content-box;
-    border-radius: 50%;
-    box-sizing: border-box;
-    padding: 4.2%;
-    height: 12.5%;
-    width: 12.5%;
-    left: 0;
-    top: 0;
-    position: absolute;
-}
-
-.piece:hover {
-    cursor: -webkit-grab;
-}
-
-.piece:active {
-    cursor: pointer;
-}
-
-.piece.wp { background-image: url("../assets/wp.png"); }
-.piece.wb { background-image: url("../assets/wb.png"); }
-.piece.wn { background-image: url("../assets/wn.png"); }
-.piece.wr { background-image: url("../assets/wr.png"); }
-.piece.wk { background-image: url("../assets/wk.png"); }
-.piece.wq { background-image: url("../assets/wq.png"); }
-.piece.bp { background-image: url("../assets/bp.png"); }
-.piece.bb { background-image: url("../assets/bb.png"); }
-.piece.bn { background-image: url("../assets/bn.png"); }
-.piece.br { background-image: url("../assets/br.png"); }
-.piece.bk { background-image: url("../assets/bk.png"); }
-.piece.bq { background-image: url("../assets/bq.png"); }
-
-.sqr-11 { transform: translateY(700%); }
-.sqr-21 { transform: translate(100%, 700%); }
-.sqr-31 { transform: translate(200%, 700%); }
-.sqr-41 { transform: translate(300%, 700%); }
-.sqr-51 { transform: translate(400%, 700%); }
-.sqr-61 { transform: translate(500%, 700%); }
-.sqr-71 { transform: translate(600%, 700%); }
-.sqr-81 { transform: translate(700%, 700%); }
-
-.sqr-12 { transform: translateY(600%); }
-.sqr-22 { transform: translate(100%, 600%); }
-.sqr-32 { transform: translate(200%, 600%); }
-.sqr-42 { transform: translate(300%, 600%); }
-.sqr-52 { transform: translate(400%, 600%); }
-.sqr-62 { transform: translate(500%, 600%); }
-.sqr-72 { transform: translate(600%, 600%); }
-.sqr-82 { transform: translate(700%, 600%); }
-
-.sqr-13 { transform: translateY(500%); }
-.sqr-23 { transform: translate(100%, 500%); }
-.sqr-33 { transform: translate(200%, 500%); }
-.sqr-43 { transform: translate(300%, 500%); }
-.sqr-53 { transform: translate(400%, 500%); }
-.sqr-63 { transform: translate(500%, 500%); }
-.sqr-73 { transform: translate(600%, 500%); }
-.sqr-83 { transform: translate(700%, 500%); }
-
-.sqr-14 { transform: translateY(400%); }
-.sqr-24 { transform: translate(100%, 400%); }
-.sqr-34 { transform: translate(200%, 400%); }
-.sqr-44 { transform: translate(300%, 400%); }
-.sqr-54 { transform: translate(400%, 400%); }
-.sqr-64 { transform: translate(500%, 400%); }
-.sqr-74 { transform: translate(600%, 400%); }
-.sqr-84 { transform: translate(700%, 400%); }
-
-.sqr-15 { transform: translateY(300%); }
-.sqr-25 { transform: translate(100%, 300%); }
-.sqr-35 { transform: translate(200%, 300%); }
-.sqr-45 { transform: translate(300%, 300%); }
-.sqr-55 { transform: translate(400%, 300%); }
-.sqr-65 { transform: translate(500%, 300%); }
-.sqr-75 { transform: translate(600%, 300%); }
-.sqr-85 { transform: translate(700%, 300%); }
-
-.sqr-16 { transform: translateY(200%); }
-.sqr-26 { transform: translate(100%, 200%); }
-.sqr-36 { transform: translate(200%, 200%); }
-.sqr-46 { transform: translate(300%, 200%); }
-.sqr-56 { transform: translate(400%, 200%); }
-.sqr-66 { transform: translate(500%, 200%); }
-.sqr-76 { transform: translate(600%, 200%); }
-.sqr-86 { transform: translate(700%, 200%); }
-
-.sqr-17 { transform: translateY(100%); }
-.sqr-27 { transform: translate(100%, 100%); }
-.sqr-37 { transform: translate(200%, 100%); }
-.sqr-47 { transform: translate(300%, 100%); }
-.sqr-57 { transform: translate(400%, 100%); }
-.sqr-67 { transform: translate(500%, 100%); }
-.sqr-77 { transform: translate(600%, 100%); }
-.sqr-87 { transform: translate(700%, 100%); }
-
-.sqr-18 { transform: translate(); }
-.sqr-28 { transform: translate(100%); }
-.sqr-38 { transform: translate(200%); }
-.sqr-48 { transform: translate(300%); }
-.sqr-58 { transform: translate(400%); }
-.sqr-68 { transform: translate(500%); }
-.sqr-78 { transform: translate(600%); }
-.sqr-88 { transform: translate(700%); }
-
-/** INVERTED */
-.inv.sqr-11 { transform: translate(700%); }
-.inv.sqr-21 { transform: translate(600%); }
-.inv.sqr-31 { transform: translate(500%); }
-.inv.sqr-41 { transform: translate(400%); }
-.inv.sqr-51 { transform: translate(300%); }
-.inv.sqr-61 { transform: translate(200%); }
-.inv.sqr-71 { transform: translate(100%); }
-.inv.sqr-81 { transform: translateY(0%); }
-
-.inv.sqr-12 { transform: translate(700%, 100%); }
-.inv.sqr-22 { transform: translate(600%, 100%); }
-.inv.sqr-32 { transform: translate(500%, 100%); }
-.inv.sqr-42 { transform: translate(400%, 100%); }
-.inv.sqr-52 { transform: translate(300%, 100%); }
-.inv.sqr-62 { transform: translate(200%, 100%); }
-.inv.sqr-72 { transform: translate(100%, 100%); }
-.inv.sqr-82 { transform: translateY(100%); }
-
-.inv.sqr-17 { transform: translate(700%, 600%); }
-.inv.sqr-27 { transform: translate(600%, 600%); }
-.inv.sqr-37 { transform: translate(500%, 600%); }
-.inv.sqr-47 { transform: translate(400%, 600%); }
-.inv.sqr-57 { transform: translate(300%, 600%); }
-.inv.sqr-67 { transform: translate(200%, 600%); }
-.inv.sqr-77 { transform: translate(100%, 600%); }
-.inv.sqr-87 { transform: translateY(600%); }
-
-.inv.sqr-18 { transform: translate(700%, 700%); }
-.inv.sqr-28 { transform: translate(600%, 700%); }
-.inv.sqr-38 { transform: translate(500%, 700%); }
-.inv.sqr-48 { transform: translate(400%, 700%); }
-.inv.sqr-58 { transform: translate(300%, 700%); }
-.inv.sqr-68 { transform: translate(200%, 700%); }
-.inv.sqr-78 { transform: translate(100%, 700%); }
-.inv.sqr-88 { transform: translateY(700%); }
 
 </style>
