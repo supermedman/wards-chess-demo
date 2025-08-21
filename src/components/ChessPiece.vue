@@ -47,6 +47,7 @@ const hasMoved = ref<boolean>(false);
 
 const emitter = defineEmits<{
     showHints: { x: number, y: number }[]
+    pieceSelected: [className: string]
 }>();
 
 
@@ -75,11 +76,35 @@ interface ActivePieceDetails {
 
 const getPieceDetails = (): ActivePieceDetails => {
     if (!pieceInstance.value) throw new Error("[WARNING]: Selected Piece is missing root element!!");
+    const currentClasses = pieceInstance.value.className.split(" ");
+    const classDetails = {
+        inv: false,
+        x: 0,
+        y: 0,
+    };
+
+    if (currentClasses.length === 4) {
+        classDetails.inv = true;
+        const sqrCoords = currentClasses[3].split("-")[1];
+        classDetails.x = parseInt(sqrCoords[0]);
+        classDetails.y = parseInt(sqrCoords[1]);
+    } else {
+        const sqrCoords = currentClasses[2].split("-")[1];
+        classDetails.x = parseInt(sqrCoords[0]);
+        classDetails.y = parseInt(sqrCoords[1]);
+    }
+
     const pieceColour = pieceInstance.value.getAttribute("init-colour") as "White" | "Black";
     const pieceType = pieceInstance.value.getAttribute("init-type") as typeof typeIndex[number];
-    const pieceX = parseInt(pieceInstance.value.getAttribute("init-x") as `${number}`);
-    const pieceY = parseInt(pieceInstance.value.getAttribute("init-y") as `${number}`);
+    const pieceInitX = parseInt(pieceInstance.value.getAttribute("init-x") as `${number}`);
+    const pieceInitY = parseInt(pieceInstance.value.getAttribute("init-y") as `${number}`);
     const isInverted = Boolean(pieceInstance.value.getAttribute("init-inverted"));
+
+    emitter("pieceSelected", pieceInstance.value.className);
+
+    const pieceX = (pieceInitX === classDetails.x || classDetails.x === 0) ? pieceInitX : classDetails.x;
+    const pieceY = (pieceInitY === classDetails.y || classDetails.y === 0) ? pieceInitY : classDetails.y;
+
     return { c: pieceColour, t: pieceType, x: pieceX, y: pieceY, inv: isInverted };
 };
 

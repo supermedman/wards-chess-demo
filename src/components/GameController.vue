@@ -51,6 +51,8 @@ type PieceInitData = [
 ];
 type PartialPieceInitData = [PieceInitData[0], PieceInitData[1], PieceInitData[2]];
 
+type PiecePlaceholder = HTMLDivElement | null;
+
 const buildPieceClass = (
     c: PieceInitData[0], 
     t: PieceInitData[1], 
@@ -93,6 +95,12 @@ const buildInitData = (inverted: boolean = false) => {
     //         acc.push([...partialData, buildPieceClass(...partialData)]);
     //         return acc;
     //     }, []);
+};
+
+const findDiv = (c: string) => {
+    const foundDiv = document.querySelector(`div.${c}`) as HTMLDivElement | null;
+    if (!foundDiv) throw new Error("[WARNING]: Div failed to be located!");
+    return foundDiv;
 };
 
 import { ref, useTemplateRef, watch } from 'vue';
@@ -154,6 +162,7 @@ const loadGameBoard = (inverted: boolean = false) => {
 };
 
 const isInverted = ref<boolean>(false);
+const selectedPiece = ref<PiecePlaceholder>(null);
 
 
 const findAnchorComments = (childrenList: ArrayIterator<[number, ChildNode]>, kids = [...childrenList]) => {
@@ -164,7 +173,7 @@ const findIndexOfAnchor = (childList: [number, Comment][], anchorName: string) =
     switch(anchorName) {
         case "Hint":
             const hintAnchorLocated = childList.find(([_, c]) => c.data === "/MoveHints");
-            console.log("Located Anchor For Hints: ", hintAnchorLocated);
+            // console.log("Located Anchor For Hints: ", hintAnchorLocated);
             finalIndex = hintAnchorLocated ? hintAnchorLocated[0] : finalIndex;
         break;
         default: break;
@@ -188,6 +197,7 @@ const buildHintDivs = (hints: { x: number; y: number; }[]) => {
         // Call for movement check between game board and piece clicked, voiding further movement logic when first filitering valid movesets
         const hintEle = document.createElement('div');
         hintEle.className = `hint ${(isInverted.value) ? "inv ": ""}sqr-${hint.x}${hint.y}`;
+        hintEle.onclick = () => moveSelected(`${hint.x}${hint.y}`);
         hintEleList.push(hintEle);
     }
     return hintEleList;
@@ -200,7 +210,7 @@ const removeHintDivs = () => {
 function updateHints(...args: { x: number; y: number; }[]) {
     if (!mainContainer.value) throw new Error("[WARNING]: Main Game Container Missing!!");
     removeHintDivs();
-    console.log("Hint Update Event Recieved: ", args);
+    // console.log("Hint Update Event Recieved: ", args);
     const builtHints = buildHintDivs(args);
     // console.log("Constructed Hints: ", builtHints);
     // console.log("Main Container State: ", mainContainer.value);
@@ -211,6 +221,20 @@ function updateHints(...args: { x: number; y: number; }[]) {
     const anchorIdx = findIndexOfAnchor(cmntList, "Hint");
     // console.log("Piece Movement Hint Anchor Position: ", anchorIdx);
     insertAtAnchor(builtHints, anchorIdx);
+}
+
+function updateSelected(className: string) {
+    console.log("Class Name of new piece Selected: ", className);
+    if (selectedPiece.value && selectedPiece.value.className === className) return;
+    selectedPiece.value = findDiv(className.split(" ").join("."));
+    console.log("Newly Selected Piece: ", selectedPiece);
+}
+function moveSelected(moveTo: string) {
+    if (!selectedPiece.value) return;
+    const cList = selectedPiece.value.className.split(" ");
+    cList[cList.length - 1] = `sqr-${moveTo}`;
+    selectedPiece.value.className = cList.join(" ");
+    removeHintDivs();
 }
 
 
@@ -256,6 +280,7 @@ watch(isInverted, (newInv, oldInv) => {
             :init-inverted=isInverted
             :class=style
             @show-hints="updateHints"
+            @piece-selected="updateSelected"
         ></chess-piece>
         <!--/MoveHints-->
     </div>
